@@ -96,8 +96,23 @@ bool TrimeshFace::intersectLocal(ray& r, isect& i) const
 	// YOUR CODE HERE
 	//
 	// FIXME: Add ray-trimesh intersection
+	glm::dvec3 rayPos =  r.getPosition();
+	glm::dvec3 rayDir = r.getDirection();
 
-	return false;
+	glm::dvec3 faceNormal = this->getNormal();
+	glm::dvec3 a_coords = parent->vertices[ids[0]];	// vertice A of trangle
+	
+	double vDotN = glm::dot(rayDir, faceNormal);
+	if(vDotN == 0) {	// ray parallel to trimeshFace
+		return false;
+	}
+	double t = glm::dot(a_coords - rayPos, faceNormal) / vDotN;
+
+	i.setObject(this);
+	i.setMaterial(this->getMaterial());
+	i.setT(t);
+	i.setN(faceNormal);
+	return true;
 }
 
 // Once all the verts and faces are loaded, per vertex normals can be

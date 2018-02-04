@@ -214,6 +214,12 @@ void RayTracer::traceImage(int w, int h)
 {
 	// Always call traceSetup before rendering anything.
 	traceSetup(w,h);
+	
+	for(int i = 0; i < w; i++) {
+		for(int j = 0; j < h; j++) {
+			tracePixel(i, j);
+		}
+	}
 
 	// YOUR CODE HERE
 	// FIXME: Start one or more threads for ray tracing
