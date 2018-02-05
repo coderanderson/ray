@@ -53,12 +53,69 @@ glm::dvec3 RayTracer::tracePixel(int i, int j)
 	glm::dvec3 col(0,0,0);
 
 	if( ! sceneLoaded() ) return col;
+	//deal with anti-aliasing in here
+	float aa4Matrix[4 * 2] = {
+	    -1.0/4.0,  3.0/4.0,
+	     3.0/4.0,  1.0/3.0,
+	    -3.0/4.0, -1.0/4.0,
+	     1.0/4.0, -3.0/4.0,
+	};
 
-	double x = double(i)/double(buffer_width);
-	double y = double(j)/double(buffer_height);
+	float aa9Matrix[9 * 2] = {
+	    0, 0,
+	    1.0, 0,
+	    -1.0, 0,
+	    0, -1.0,
+	    0, 1.0,
+	    0.707, 0.707,
+	    0.707, -0.707,
+	    -0.707, -0.707,
+	    -0.707, 0.707
+	};
+
+	float aa16Matrix[16 * 2] = {
+		1.0, 0, -1.0, 0,
+	    0, -1.0, 0, 1.0,
+	    0.707, 0.707, 0.707, -0.707,
+	    -0.707, -0.707, -0.707, 0.707,
+	    0.97, 0.25, 0.97, -0.25,
+	    -0.97, -0.25, -0.97, 0.25,
+	    0.25, 0.97, 0.25, -0.97,
+	    -0.25, -0.97, -0.25, 0.97,
+	};
+
+	if (samples == 1) {
+		double x = double(i)/double(buffer_width);
+		double y = double(j)/double(buffer_height);
+		col = trace(x, y);
+	} else if (samples == 4) {
+		for(int count = 0; count < samples; count++) {
+			double x = double(i + aa4Matrix[2 * count])/double(buffer_width);
+			double y = double(j + aa4Matrix[2 * count + 1])/double(buffer_height);
+			col += trace(x, y);
+		}
+		col /= samples;
+	} else if (samples == 9) {
+		for(int count = 0; count < samples; count++) {
+			double x = double(i + aa9Matrix[2 * count])/double(buffer_width);
+			double y = double(j + aa9Matrix[2 * count + 1])/double(buffer_height);
+			col += trace(x, y);
+		}
+		col /= samples;
+	} else if (samples == 16) {
+		for(int count = 0; count < samples; count++) {
+			double x = double(i + aa16Matrix[2 * count])/double(buffer_width);
+			double y = double(j + aa16Matrix[2 * count + 1])/double(buffer_height);
+			col += trace(x, y);
+		}
+		col /= samples;
+	} else {
+		double x = double(i)/double(buffer_width);
+		double y = double(j)/double(buffer_height);
+		col = trace(x, y);
+	}
 
 	unsigned char *pixel = buffer.data() + ( i + j * buffer_width ) * 3;
-	col = trace(x, y);
 
 	pixel[0] = (int)( 255.0 * col[0]);
 	pixel[1] = (int)( 255.0 * col[1]);
@@ -78,6 +135,7 @@ glm::dvec3 RayTracer::traceRay(ray& r, const glm::dvec3& thresh, int depth, doub
 	std::cerr << "== current depth: " << depth << std::endl;
 #endif
 
+
 	if(scene->intersect(r, i)) {
 		// YOUR CODE HERE
 
@@ -89,9 +147,58 @@ glm::dvec3 RayTracer::traceRay(ray& r, const glm::dvec3& thresh, int depth, doub
 		// Instead of just returning the result of shade(), add some
 		// more steps: add in the contributions from reflected and refracted
 		// rays.
-
 		const Material& m = i.getMaterial();
 		colorC = m.shade(scene.get(), r, i);
+
+		if(depth == 0) {
+			return colorC;
+		} 
+
+		glm::dvec3 normal = i.getN();
+
+		glm::dvec3 omegaIn = r.getDirection();
+		glm::dvec3 omegaNormal = glm::dot(omegaIn, normal) * normal;
+		glm::dvec3 omegaRef = omegaIn - 2 * glm::dot(omegaIn, normal) * normal;
+
+		ray reflectedR(r.at(i), omegaRef, r.getAtten(), ray::REFLECTION);
+		glm::dvec3 reflected = RayTracer::traceRay(reflectedR, thresh, depth - 1, t);
+		
+		colorC += m.kr(i) * reflected;
+
+		glm::dvec3 v_d = r.getDirection();
+		glm::dvec3 v_n = normal;
+		v_n = glm::normalize(v_n);
+		glm::dvec3 cos = v_n * glm::dot(-v_d, v_n);
+		glm::dvec3 sin = cos + v_d;
+
+		double n_incident, n_transmit, n_critical;
+		if(glm::dot(v_d, v_n) < 0) {
+			n_incident = 1;
+			n_transmit = m.index(i);
+		} else {
+			n_incident = m.index(i);
+			n_transmit = 1;
+			v_n = -v_n;
+		}
+
+		n_critical = n_transmit / n_incident;
+
+
+		if(glm::length(sin) < n_critical) {
+			glm::dvec3 sin_t = (n_incident / n_transmit) * sin;
+			//cout << "sint" << sin_t.length() << endl;
+
+			double cos_t_val = sqrt(1 - glm::dot(sin_t, sin_t));
+			glm::dvec3 cos_t = - v_n * cos_t_val;
+			// cout << "cost" << cos_t.length() <<" " << cos_t_val << endl;
+
+			glm::dvec3 v_refract = cos_t + sin_t;
+			ray refract_ray(r.at(i), v_refract, r.getAtten(), ray::REFRACTION);
+			// cout << "Refraction: " << - v_n * v_refract << ' ' << sin_t * cos_t << endl;
+			glm::dvec3 refracted = RayTracer::traceRay(refract_ray, thresh, depth - 1, t);
+			colorC += m.kt(i) * refracted;
+		}
+
 	} else {
 		// No intersection.  This ray travels to infinity, so we color
 		// it according to the background color, which in this (simple) case
@@ -246,6 +353,9 @@ int RayTracer::aaImage()
 	//
 	// TIP: samples and aaThresh have been synchronized with TraceUI by
 	//      RayTracer::traceSetup() function
+
+	//implemented in tracePixel()
+
 	return 0;
 }
 
