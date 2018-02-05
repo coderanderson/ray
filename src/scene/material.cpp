@@ -52,7 +52,7 @@ glm::dvec3 Material::shade(Scene* scene, const ray& r, const isect& i) const
 		glm::dvec3 lightDirect = pLight->getDirection(r.at(i));
 		glm::dvec3 normal = i.getN();
 		glm::dvec3 lightColor = pLight->getColor() * pLight->distanceAttenuation(r.at(i));
-
+		lightColor *= pLight->shadowAttenuation(r, r.at(i));
 		double coefficientD = glm::dot(lightDirect, normal);
 		if(coefficientD > 0) {
 			diffuse += coefficientD * lightColor * kd(i);
@@ -63,12 +63,12 @@ glm::dvec3 Material::shade(Scene* scene, const ray& r, const isect& i) const
 		glm::dvec3 omegaRef = omegaIn - 2 * glm::dot(omegaIn, normal) * normal;
 		double coefficientS = glm::dot(-r.getDirection(), omegaRef);
 		int alpha = 5;
-		while(alpha > 0) {
-			coefficientS *= coefficientS;
-			alpha--;
-		}
+		// while(alpha > 0) {
+		// 	coefficientS *= coefficientS;
+		// 	alpha--;
+		// }
 		if(coefficientS > 0) {
-			specular += coefficientS * lightColor * ks(i);
+			specular += pow(coefficientS, shininess(i)) * lightColor * ks(i);
 		}
 
 		ambient += ka(i) * lightColor;
