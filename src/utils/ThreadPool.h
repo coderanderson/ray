@@ -4,7 +4,8 @@
 #include <thread>
 #include <queue>
 #include "tasks.h"
-
+#include <mutex>
+#include <condition_variable>
 
 
 class ThreadPool {
