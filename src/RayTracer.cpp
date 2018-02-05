@@ -337,9 +337,10 @@ void RayTracer::traceImage(int w, int h)
 
 	for(int i = 0; i < w; i++) {
 		for(int j = 0; j < h; j++) {
-			Task* task = new Task();
-			task->func = [this, i, j]{this->tracePixel(i, j);};
-			this->threadPool->addTask(task);
+			// Task* task = new Task();
+			// task->func = [this, i, j]{this->tracePixel(i, j);};
+			// this->threadPool->addTask(task);
+			this->tracePixel(i, j);
 		}
 	}
 

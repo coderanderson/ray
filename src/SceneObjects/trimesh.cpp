@@ -96,9 +96,93 @@ bool TrimeshFace::intersectLocal(ray& r, isect& i) const
 	// YOUR CODE HERE
 	//
 	// FIXME: Add ray-trimesh intersection
+
+	double RAY_EPSILON = 0.00000001;
+
+    const glm::dvec3& a = parent->vertices[ids[0]];
+    const glm::dvec3& b = parent->vertices[ids[1]];
+    const glm::dvec3& c = parent->vertices[ids[2]];
+
+    // YOUR CODE HERE
+
+    glm::dvec3 v_n = this->getNormal();
+    
+    double d = - glm::dot(v_n, a);
+
+    const glm::dvec3& v_p = r.getPosition();
+    const glm::dvec3& v_d = r.getDirection();
+
+    double denominator = glm::dot(v_n, v_d);
+    double numerator = glm::dot(v_n, v_p) + d;
+    // cout << "t is " << numerator << "/" << denominator;
+    // cout << "a is " << a << "; b is " << b << "; c is " << c << endl;
+    if (denominator) {
+        double t = - numerator / denominator;
+        // cout << " = " << t << endl;
+        if (t > RAY_EPSILON) {
+            glm::dvec3 p = r.at(t);
+            //cout << "; p is " << p << "; deter is " << ((b - a) ^ (c - a)) << endl;
+            //To calculate the value, we need to make sure that we need fetch the 
+            //value of cross product.
+            double deter = glm::dot(glm::cross(b - a, c - a), v_n);
+            double alpha = glm::dot(glm::cross(b - p, c - p), v_n) / deter;
+            double beta = glm::dot(glm::cross(p - a, c - a), v_n) / deter;
+            double gamma = glm::dot(glm::cross(b - a, p - a), v_n) / deter;
+
+            if (alpha >= - RAY_EPSILON && 
+                beta >= - RAY_EPSILON && 
+                alpha + beta <= 1 + RAY_EPSILON) {
+
+                glm::dvec3 normal_isect;
+                // Calculate the phong interpolation of normal vector
+                if (parent -> vertNorms) {
+                    glm::dvec3& normal_a = parent->normals[ids[0]];
+                    glm::dvec3& normal_b = parent->normals[ids[1]];
+                    glm::dvec3& normal_c = parent->normals[ids[2]];
+                    normal_isect = alpha * normal_a + beta * normal_b + gamma * normal_c;
+                    normal_isect = glm::normalize(normal_isect);
+                } else {
+                    normal_isect = v_n;
+                }
+
+                i.setT(t);
+                i.setN(normal_isect);
+                i.setObject(this);
+                if(parent->materials.size()>0){
+                    Material am = *(parent->materials[ids[0]]);
+                    Material bm = *(parent->materials[ids[1]]);
+                    Material cm = *(parent->materials[ids[2]]);
+                    Material im;
+                    im += alpha * am;
+                    im += beta * bm;
+                    im += gamma * cm;
+                    i.setMaterial(im);
+                } else {
+                    i.setMaterial(parent->getMaterial());
+                }
+                i.setBary(alpha, beta, gamma); //
+                // cout << "new info is: t"<< i.t << "; bary:" << i.bary << endl;
+                return true;    
+            }
+            // cout << "out of triangle\n";
+        }
+        // cout << "t < RAY_EPSILON\n";
+    }
+    // cout << "denominator == 0\n";
+    return false;
+
+
+
+
+
+
+
+
+
+
+    /*
 	glm::dvec3 rayPos =  r.getPosition();
 	glm::dvec3 rayDir = r.getDirection();
-
 	glm::dvec3 faceNormal = this->getNormal();
 	glm::dvec3 a_coords = parent->vertices[ids[0]];	// vertice A of trangle
 	
@@ -106,13 +190,13 @@ bool TrimeshFace::intersectLocal(ray& r, isect& i) const
 	if(vDotN == 0) {	// ray parallel to trimeshFace
 		return false;
 	}
-	double t = glm::dot(a_coords - rayPos, faceNormal) / vDotN;
-
+	double t = - glm::dot(a_coords - rayPos, faceNormal) / vDotN;
 	i.setObject(this);
 	i.setMaterial(this->getMaterial());
 	i.setT(t);
 	i.setN(faceNormal);
 	return true;
+	*/
 }
 
 // Once all the verts and faces are loaded, per vertex normals can be
