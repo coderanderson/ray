@@ -12,6 +12,9 @@
 #include "scene/cubeMap.h"
 #include "scene/ray.h"
 
+#include "utils/ThreadPool.h"
+#include "utils/tasks.h"
+
 class Scene;
 class Pixel {
 public:
@@ -61,6 +64,12 @@ private:
 	int buffer_width, buffer_height;
 	int bufferSize;
 	unsigned int threads;
+	
+	ThreadPool *threadPool;
+	// std::vector<std::thread> threadPool;
+	// std::mutex threadPoolMutex;
+
+
 	int block_size;
 	double thresh;
 	double aaThresh;

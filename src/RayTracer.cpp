@@ -20,6 +20,7 @@
 #include <iostream>
 #include <fstream>
 
+
 using namespace std;
 extern TraceUI* traceUI;
 
@@ -198,6 +199,9 @@ void RayTracer::traceSetup(int w, int h)
 
 	// YOUR CODE HERE
 	// FIXME: Additional initializations
+	this->threadPool = new ThreadPool(threads);
+	std::cout << "init thread pool, size: " << threadPool << std::endl;
+
 }
 
 /*
@@ -214,12 +218,6 @@ void RayTracer::traceImage(int w, int h)
 {
 	// Always call traceSetup before rendering anything.
 	traceSetup(w,h);
-	
-	for(int i = 0; i < w; i++) {
-		for(int j = 0; j < h; j++) {
-			tracePixel(i, j);
-		}
-	}
 
 	// YOUR CODE HERE
 	// FIXME: Start one or more threads for ray tracing
@@ -229,6 +227,16 @@ void RayTracer::traceImage(int w, int h)
 	//
 	//       An asynchronous traceImage lets the GUI update your results
 	//       while rendering.
+
+	for(int i = 0; i < w; i++) {
+		for(int j = 0; j < h; j++) {
+			Task* task = new Task();
+			task->func = [this, i, j]{this->tracePixel(i, j);};
+			this->threadPool->addTask(task);
+		}
+	}
+
+	
 }
 
 int RayTracer::aaImage()
@@ -253,6 +261,8 @@ bool RayTracer::checkRender()
 
 void RayTracer::waitRender()
 {
+	
+
 	// YOUR CODE HERE
 	// FIXME: Wait until the rendering process is done.
 	//        This function is essential if you are using an asynchronous
