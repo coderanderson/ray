@@ -97,7 +97,7 @@ bool TrimeshFace::intersectLocal(ray& r, isect& i) const
 	//
 	// FIXME: Add ray-trimesh intersection
 
-	double RAY_EPSILON = 0.1;
+	double RAY_EPSILON = 0.00000001;
 
     const glm::dvec3& a = parent->vertices[ids[0]];
     const glm::dvec3& b = parent->vertices[ids[1]];
