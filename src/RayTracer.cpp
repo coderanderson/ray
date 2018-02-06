@@ -202,11 +202,10 @@ glm::dvec3 RayTracer::traceRay(ray& r, const glm::dvec3& thresh, int depth, doub
 			if (scene->intersect(refract_ray, newInsect)) {
 				attenDistance = newInsect.getT() / 10; //glm::length(r.at(i) - refract_ray.at(newInsect));
 			} 
-			cout << attenDistance << endl;
 
 			// cout << "Refraction: " << - v_n * v_refract << ' ' << sin_t * cos_t << endl;
 			glm::dvec3 refracted = RayTracer::traceRay(refract_ray, thresh, depth - 1, t);
-			colorC += glm::pow(m.kt(i), glm::dvec3(attenDistance, attenDistance, attenDistance)) * refracted;
+			colorC += glm::pow(m.kt(i), glm::dvec3(0.01,0.01,0.01)) * refracted;
 		}
 
 	} else {
