@@ -42,7 +42,7 @@ glm::dvec3 RayTracer::trace(double x, double y)
 
 	ray r(glm::dvec3(0,0,0), glm::dvec3(0,0,0), glm::dvec3(1,1,1), ray::VISIBILITY);
 	scene->getCamera().rayThrough(x,y,r);
-	double dummy;
+	double dummy = 0;
 	glm::dvec3 ret = traceRay(r, glm::dvec3(1.0,1.0,1.0), traceUI->getDepth(), dummy);
 	ret = glm::clamp(ret, 0.0, 1.0);
 	return ret;
@@ -147,6 +147,7 @@ glm::dvec3 RayTracer::traceRay(ray& r, const glm::dvec3& thresh, int depth, doub
 		// Instead of just returning the result of shade(), add some
 		// more steps: add in the contributions from reflected and refracted
 		// rays.
+
 		const Material& m = i.getMaterial();
 		colorC = m.shade(scene.get(), r, i);
 
@@ -192,11 +193,20 @@ glm::dvec3 RayTracer::traceRay(ray& r, const glm::dvec3& thresh, int depth, doub
 			glm::dvec3 cos_t = - v_n * cos_t_val;
 			// cout << "cost" << cos_t.length() <<" " << cos_t_val << endl;
 
+			
 			glm::dvec3 v_refract = cos_t + sin_t;
 			ray refract_ray(r.at(i), v_refract, r.getAtten(), ray::REFRACTION);
+
+			isect newInsect;
+			double attenDistance;
+			if (scene->intersect(refract_ray, newInsect)) {
+				attenDistance = newInsect.getT() / 10; //glm::length(r.at(i) - refract_ray.at(newInsect));
+			} 
+			cout << attenDistance << endl;
+
 			// cout << "Refraction: " << - v_n * v_refract << ' ' << sin_t * cos_t << endl;
 			glm::dvec3 refracted = RayTracer::traceRay(refract_ray, thresh, depth - 1, t);
-			colorC += m.kt(i) * refracted;
+			colorC += glm::pow(m.kt(i), glm::dvec3(attenDistance, attenDistance, attenDistance)) * refracted;
 		}
 
 	} else {

@@ -23,7 +23,16 @@ glm::dvec3 DirectionalLight::shadowAttenuation(const ray& r, const glm::dvec3& p
   	ray shadow_ray(p, -orientation, r.getAtten(), ray::SHADOW);
   	if (this->getScene()->intersect(shadow_ray, i)) {
       	const Material& m = i.getMaterial();
-      	return m.kt(i);
+
+      	ray newShadowRay(shadow_ray.at(i), -orientation, r.getAtten(), ray::SHADOW);
+      	isect newInsect;
+		double attenDistance;
+		if (this->getScene()->intersect(newShadowRay, newInsect)) {
+			attenDistance = newInsect.getT(); //glm::length(r.at(i) - refract_ray.at(newInsect));
+		} else {
+			attenDistance = 10;
+		}
+      	return glm::pow(m.kt(i), glm::dvec3(attenDistance,attenDistance,attenDistance));
   	}
 	return glm::dvec3(1.0, 1.0, 1.0);
 }

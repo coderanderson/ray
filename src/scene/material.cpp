@@ -56,6 +56,8 @@ glm::dvec3 Material::shade(Scene* scene, const ray& r, const isect& i) const
 		double coefficientD = glm::dot(lightDirect, normal);
 		if(coefficientD > 0) {
 			diffuse += coefficientD * lightColor * kd(i);
+		} else {
+			diffuse += (-coefficientD) * lightColor * kd(i);
 		}
 
 		glm::dvec3 omegaIn = -1.0 * lightDirect;
@@ -65,7 +67,7 @@ glm::dvec3 Material::shade(Scene* scene, const ray& r, const isect& i) const
 		
 		if(coefficientS > 0) {
 			specular += pow(coefficientS, shininess(i)) * lightColor * ks(i);
-		}
+		} 
 
 		ambient += ka(i) * scene->ambient();
 	}
