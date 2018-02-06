@@ -307,7 +307,7 @@ void RayTracer::traceSetup(int w, int h)
 	// YOUR CODE HERE
 	// FIXME: Additional initializations
 	this->threadPool = new ThreadPool(threads);
-	std::cout << "init thread pool, size: " << threadPool << std::endl;
+	std::cout << "init thread pool, size: " << threads << std::endl;
 
 }
 
