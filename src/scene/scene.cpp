@@ -142,3 +142,58 @@ TextureMap* Scene::getTexture(string name) {
 }
 
 
+// move this method to scene.h
+void Scene::buildKdTree(vector<Geometry*>& objects, int depth, int size) {
+	this->kdtree = new KdTree();
+	kdtree.constructFromScene(this->objects, this->sceneBounds, depth, size);
+}
+
+
+boolean Scene::intersectKdTree(ray&, isect&i, kdTree<Geometry*>* kdtree, double t_min, double t_max) const {
+	stack<StackTreeNode<Geometry*>> kdtreeStack;
+	StackTreeNode<Geometry*> rootEle = stackTreeNode<Geometry*>(kdtree->root, t_min, t_max);
+	kdtreeStack.push(rootEle);
+	boolean have_one = false;
+	while(!kdtreeStack.empty()) {
+		StackTreeNode<Geometry*> tmp_node = kdtree_stack.top();
+		kdtree_stack.pop();
+		if((tmp_node.cur_node->left == nullptr) && (tmp_node.cur_node->right == nullptr)) {
+			for(int idx = 0; idx < tmp_node.cur_node->objects.size(); ++idx) {
+				isect cur;
+				if(tmp_node.cur_node->obj_vector[idx] -> inteersect(r, cur)) {
+					if(!have_one || cur.t < i.t) {
+						i = cur;
+						have_one = true;
+					}
+				}
+			}
+		}
+		else {
+			double t_axis_max = r.at(t_max)[tmp_node.cur_node->index];
+			double t_axis_min = r.at(t_min)[tmp_node.cur_node->index];
+			KdNode<Geometry*> *left = tmp_node.cur_node->left;
+			kdNode<Geometry*> *right = tmp_node.cur_node->right;
+			double t_star = tmp_node.cur_node->t_star;
+			if(t_star > t_axis_max && t_star > t_axis_min) {
+				kdtree_stack.push(StackTreeNode<Geometry*>(left, t_min, t_max));
+			}
+			else if(t_star < t_axis_min && t_star < t_axis_max) {
+				kdtree_stack.push(StackTreeNode<Geometry*>(right, t_min, t_max));
+			}
+			else {
+				double rmax, rmin;
+				if(tmp_node.cur_node->right->bounds.intersect(r, rmin, rmax)) {
+					kdtree_stac.push(StackTreeNode<Geometry*>(right, rmin, rmax));
+				}
+				double lmax, lmin;
+				if(tmp_node.cur_node->left->bounds.intersect(r, lmin, lmax)) {
+					kdtree_stack.push(StackTreenode<Geometry*>(left, lmin, lmax));
+				}
+			}
+
+		}
+	}
+	return have_one;
+
+}
+

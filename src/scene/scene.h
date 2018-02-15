@@ -28,6 +28,7 @@
 #include <glm/vec4.hpp>
 
 using std::unique_ptr;
+using std::vector;
 
 class Light;
 class Scene;
@@ -242,6 +243,14 @@ public:
 	const Camera& getCamera() const { return camera; }
 	Camera& getCamera() { return camera; }
 
+
+	/**
+	 *
+	 * our code here
+	 */
+
+
+
 	// For efficiency reasons, we'll store texture maps in a cache
 	// in the Scene.  This makes sure they get deleted when the scene
 	// is destroyed.
@@ -283,11 +292,92 @@ private:
 	// are exempt from this requirement.
 	BoundingBox sceneBounds;
 
-	KdTree<Geometry>* kdtree;
+	KdTree* kdtree;
 
 public:
 	// This is used for debugging purposes only.
 	mutable std::vector<std::pair<ray*, isect*>> intersectCache;
 };
+
+
+
+class KdNode {
+public:
+	KdNode(BoundingBox _bbox, int _axis, int _leafSize):
+		bbox(_bbox), axis(_axis), leafSize(_leafSize), left(nullptr), right(nullptr) {}
+
+	BoundingBox bbox;
+	KdNode* left, *right;
+
+	vector<Geometry*> objects;
+	double tSplit;
+	int axis;
+	int leafSize;
+
+	
+
+public:
+	void setLeafSize(int size) {this->leafSize = size;} 
+
+	double findSplit(int depth);
+	
+	
+	KdNode buildKdTreeHelper(vector<Geometry*> &objects, int depth, int size, const BoundingBox& bounds);
+
+};
+
+
+
+
+
+
+class KdTree {
+public:
+	
+void setDepth(int depth) {this-> depth = depth;}
+
+void buildTree(Scene* scene, int depth, int size);
+
+bool intersect(ray& r, isect&i, double tMin, double tMax) const;
+	
+	
+
+public:
+   KdNode root;
+   vector<Geometry*> objects;
+   int depth;
+};
+
+
+
+class KdNodeWrapper {
+public:
+	KdNodeWrapper(KdNode* _node, int _tMax, int tMin): node(_node), tMax(_tMax), tMin(_tMin) {}
+	KdNodeWrapper(): node(nullptr), tMax(0), tMin(0) {}
+public:
+	kdNode* node;
+	double tMax, tMin;
+
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endif // __SCENE_H__
