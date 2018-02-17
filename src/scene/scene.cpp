@@ -1,4 +1,5 @@
 #include <cmath>
+#include <iostream>
 
 #include "scene.h"
 #include "light.h"
@@ -118,6 +119,17 @@ void Scene::add(Light* light)
 // Get any intersection with an object.  Return information about the 
 // intersection through the reference parameter.
 bool Scene::intersect(ray& r, isect& i) const {
+	// double tMin = 0.0, tMax = 0.0;
+	// bool haveOne = this->intersectKdTree(r, i, tMin, tMax);
+	// if(!haveOne)
+	// 	i.setT(1000.0);
+	// // if debugging,
+	// if (TraceUI::m_debug)
+	// 	intersectCache.push_back(std::make_pair(new ray(r), new isect(i)));
+	// return haveOne;
+
+
+
 	double tmin = 0.0;
 	double tmax = 0.0;
 	bool have_one = false;
@@ -167,9 +179,11 @@ template<typename Obj>
 void KdTree<Obj>::constructFromScene(vector<Obj> objects, BoundingBox sceneBounds, int depth, int size) {
 	for(int i = 0; i < objects.size(); i++) {
 		if(objects[i]->isTrimesh()) {
+			//cout << "trimesh copying faces..." << endl; // this copy is quick enough. should be no problem.
 			for(int j = 0; j < ((Trimesh*) objects[i])->getFaces().size(); j++) {
 				this->objects.push_back( ((Trimesh*) objects[i])->getFaces()[j]);
 			}
+			//cout << "copy faces done" << endl;
 		}
 		else {
 			this->objects.push_back(objects[i]);
@@ -182,6 +196,9 @@ void KdTree<Obj>::constructFromScene(vector<Obj> objects, BoundingBox sceneBound
 
 template<typename Obj>
 KdNode<Obj>* KdNode<Obj>::buildKdTreeHelper(vector<Obj>& objects, const BoundingBox& bbox, int depth, int size) {
+	cout << "build kdtree level: " << depth
+		<< ", leafSize: " << size 
+		<< ", current objects number: " << objects.size() << endl;
 	int axis = depth % 3;
 
 	KdNode<Obj>* node = new KdNode<Obj>(bbox, axis, size);
@@ -194,6 +211,7 @@ KdNode<Obj>* KdNode<Obj>::buildKdTreeHelper(vector<Obj>& objects, const Bounding
 	}
 
 	node->tSplit = this->findSplittingT(depth, objects);
+	cout << "find tsplit: " << node->tSplit << endl;
 	
 	BoundingBox bboxLeft(bbox.getMin(), bbox.getMax());
 	bboxLeft.setMax(axis, node->tSplit);
@@ -204,16 +222,21 @@ KdNode<Obj>* KdNode<Obj>::buildKdTreeHelper(vector<Obj>& objects, const Bounding
 
 	vector<Obj> leftObjects, rightObjects;
 	for(int i = 0; i < objects.size(); i++) {
-		if(bboxLeft.intersects(objects[i]->getBoundingBox())) {
-			leftObjects.push_back(objects[i]);
+		if(!objects[i]->hasBoundingBoxCapability()) {
+			cout << "object " << i << " don't have bounding box!" << endl;
 		}
 		if(bboxRight.intersects(objects[i]->getBoundingBox())) {
 			rightObjects.push_back(objects[i]);
 		}
+		if(bboxLeft.intersects(objects[i]->getBoundingBox())) {
+			leftObjects.push_back(objects[i]);
+		}
+		
 	}
 
 	node->left = buildKdTreeHelper(leftObjects, bboxLeft, depth - 1, size);
 	node->right = buildKdTreeHelper(rightObjects, bboxRight, depth - 1, size);
+	return node;
 }
 
 
@@ -222,11 +245,13 @@ double KdNode<Obj>::findSplittingT(int depth, vector<Obj>& objects) {
 	int axis = depth % 3;
 	vector<double> locations;
 	for(int i = 0; i < objects.size(); i++) {
-		BoundingBox bbox = objects[i]->getBoundingBox();
+		const BoundingBox& bbox = objects[i]->getBoundingBox();
 		locations.push_back(bbox.getMin()[axis]);
 		locations.push_back(bbox.getMax()[axis]);
 	}
+	// cout << "sort start" << endl; //quick enough
 	sort(locations.begin(), locations.end());
+	// cout << "sort end" << endl;
 
 	double tSplit = 0;
 	double minCost = std::numeric_limits<double>::max();
@@ -234,8 +259,8 @@ double KdNode<Obj>::findSplittingT(int depth, vector<Obj>& objects) {
 	for(int i = 0; i < locations.size(); i++) {
 		int leftCount = 0, rightCount = 0;
 		double leftArea = 0, rightArea = 0;
-		for(int i = 0; i < objects.size(); i++) {
-			BoundingBox box = objects[i]->getBoundingBox();
+		for(int objIdx = 0; objIdx < objects.size(); objIdx++) {
+			BoundingBox box = objects[objIdx]->getBoundingBox();
 			double leftBound = box.getMin()[axis], rightBound = box.getMax()[axis];
 
 			if(rightBound < locations[i]) {
