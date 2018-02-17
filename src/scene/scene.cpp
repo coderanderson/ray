@@ -7,8 +7,14 @@
 #include <glm/gtx/extended_min_max.hpp>
 #include <iostream>
 #include <glm/gtx/io.hpp>
+#include <stack>
+
+#include "../SceneObjects/trimesh.h"
 
 using namespace std;
+using std::unique_ptr;
+using std::stack;
+using std::vector;
 
 bool Geometry::intersect(ray& r, isect& i) const {
 	double tmin, tmax;
@@ -143,25 +149,139 @@ TextureMap* Scene::getTexture(string name) {
 
 
 // move this method to scene.h
-void Scene::buildKdTree(vector<Geometry*>& objects, int depth, int size) {
-	this->kdtree = new KdTree();
-	kdtree.constructFromScene(this->objects, this->sceneBounds, depth, size);
+void Scene::buildKdTree(int depth, int size) {
+	// this->kdtree = new KdTree<unique_ptr<Geometry>>();
+	this->kdtree = new KdTree<Geometry*>();
+	vector<Geometry*> kdObjects;
+	for(int i = 0; i < this->objects.size(); i++) {
+		kdObjects.push_back(this->objects[i].get());
+	}
+	this->kdtree->constructFromScene(kdObjects, this->sceneBounds, depth, size);
+}
+
+bool Scene::intersectKdTree(ray& r, isect& i, double tMin, double tMax) const {
+	return this->kdtree->intersect(r, i, tMin, tMax);
+}
+
+template<typename Obj>
+void KdTree<Obj>::constructFromScene(vector<Obj> objects, BoundingBox sceneBounds, int depth, int size) {
+	for(int i = 0; i < objects.size(); i++) {
+		if(objects[i]->isTrimesh()) {
+			for(int j = 0; j < ((Trimesh*) objects[i])->getFaces().size(); j++) {
+				this->objects.push_back( ((Trimesh*) objects[i])->getFaces()[j]);
+			}
+		}
+		else {
+			this->objects.push_back(objects[i]);
+		}
+	}
+	this->setDepth(depth);
+	this->root = this->root->buildKdTreeHelper(this->objects, sceneBounds, depth, size);
 }
 
 
-boolean Scene::intersectKdTree(ray&, isect&i, kdTree<Geometry*>* kdtree, double t_min, double t_max) const {
-	stack<StackTreeNode<Geometry*>> kdtreeStack;
-	StackTreeNode<Geometry*> rootEle = stackTreeNode<Geometry*>(kdtree->root, t_min, t_max);
+template<typename Obj>
+KdNode<Obj>* KdNode<Obj>::buildKdTreeHelper(vector<Obj>& objects, const BoundingBox& bbox, int depth, int size) {
+	int axis = depth % 3;
+
+	KdNode<Obj>* node = new KdNode<Obj>(bbox, axis, size);
+
+	if(objects.size() == 0) return node;
+
+	if(objects.size() <= node->leafSize || depth == 0) {
+		node->objects.assign(objects.begin(), objects.end());
+		return node;
+	}
+
+	node->tSplit = this->findSplittingT(depth, objects);
+	
+	BoundingBox bboxLeft(bbox.getMin(), bbox.getMax());
+	bboxLeft.setMax(axis, node->tSplit);
+
+	BoundingBox bboxRight(bbox.getMin(), bbox.getMax());
+	bboxRight.setMin(axis, node->tSplit);
+
+
+	vector<Obj> leftObjects, rightObjects;
+	for(int i = 0; i < objects.size(); i++) {
+		if(bboxLeft.intersects(objects[i]->getBoundingBox())) {
+			leftObjects.push_back(objects[i]);
+		}
+		if(bboxRight.intersects(objects[i]->getBoundingBox())) {
+			rightObjects.push_back(objects[i]);
+		}
+	}
+
+	node->left = buildKdTreeHelper(leftObjects, bboxLeft, depth - 1, size);
+	node->right = buildKdTreeHelper(rightObjects, bboxRight, depth - 1, size);
+}
+
+
+template<typename Obj>
+double KdNode<Obj>::findSplittingT(int depth, vector<Obj>& objects) {
+	int axis = depth % 3;
+	vector<double> locations;
+	for(int i = 0; i < objects.size(); i++) {
+		BoundingBox bbox = objects[i]->getBoundingBox();
+		locations.push_back(bbox.getMin()[axis]);
+		locations.push_back(bbox.getMax()[axis]);
+	}
+	sort(locations.begin(), locations.end());
+
+	double tSplit = 0;
+	double minCost = std::numeric_limits<double>::max();
+	//double bb_area = node->bbox.area();
+	for(int i = 0; i < locations.size(); i++) {
+		int leftCount = 0, rightCount = 0;
+		double leftArea = 0, rightArea = 0;
+		for(int i = 0; i < objects.size(); i++) {
+			BoundingBox box = objects[i]->getBoundingBox();
+			double leftBound = box.getMin()[axis], rightBound = box.getMax()[axis];
+
+			if(rightBound < locations[i]) {
+				leftCount++;
+				leftArea += box.area();
+			}
+			else if(leftBound > locations[i]) {
+				rightCount++;
+				rightArea += box.area();
+			}
+			else {
+				leftCount++;
+				rightCount++;
+				leftArea += box.area();
+				rightArea += box.area();
+			}
+		}
+
+		double cost = (rightArea * rightCount + leftArea * leftCount) / (leftArea + rightArea);
+		if(cost < minCost) {
+			minCost = cost;
+			tSplit = locations[i];
+		}
+	}
+	return tSplit;
+}
+
+
+
+
+
+
+template<typename Obj>
+bool KdTree<Obj>::intersect(ray& r, isect& i, double tMin, double tMax) const {
+	stack<KdNodeWrapper<Obj>> kdtreeStack;
+	KdNodeWrapper<Obj> rootEle(this->root, tMin, tMax);
 	kdtreeStack.push(rootEle);
-	boolean have_one = false;
+	bool have_one = false;
 	while(!kdtreeStack.empty()) {
-		StackTreeNode<Geometry*> tmp_node = kdtree_stack.top();
-		kdtree_stack.pop();
-		if((tmp_node.cur_node->left == nullptr) && (tmp_node.cur_node->right == nullptr)) {
-			for(int idx = 0; idx < tmp_node.cur_node->objects.size(); ++idx) {
+		KdNodeWrapper<Obj> tmp_node = kdtreeStack.top();
+		kdtreeStack.pop();
+		if((tmp_node.node->left == nullptr) && (tmp_node.node->right == nullptr)) {
+			for(int idx = 0; idx < tmp_node.node->objects.size(); ++idx) {
 				isect cur;
-				if(tmp_node.cur_node->obj_vector[idx] -> inteersect(r, cur)) {
-					if(!have_one || cur.t < i.t) {
+				if(tmp_node.node->objects[idx] -> intersect(r, cur)) {
+					if(!have_one || cur.getT() < i.getT()) {
 						i = cur;
 						have_one = true;
 					}
@@ -169,25 +289,25 @@ boolean Scene::intersectKdTree(ray&, isect&i, kdTree<Geometry*>* kdtree, double 
 			}
 		}
 		else {
-			double t_axis_max = r.at(t_max)[tmp_node.cur_node->index];
-			double t_axis_min = r.at(t_min)[tmp_node.cur_node->index];
-			KdNode<Geometry*> *left = tmp_node.cur_node->left;
-			kdNode<Geometry*> *right = tmp_node.cur_node->right;
-			double t_star = tmp_node.cur_node->t_star;
-			if(t_star > t_axis_max && t_star > t_axis_min) {
-				kdtree_stack.push(StackTreeNode<Geometry*>(left, t_min, t_max));
+			double t_axis_max = r.at(tMax)[tmp_node.node->axis];
+			double t_axis_min = r.at(tMin)[tmp_node.node->axis];
+			KdNode<Obj> *left = tmp_node.node->left;
+			KdNode<Obj> *right = tmp_node.node->right;
+			double tSplit = tmp_node.node->tSplit;
+			if(tSplit > t_axis_max && tSplit > t_axis_min) {
+				kdtreeStack.push(KdNodeWrapper<Obj>(left, tMin, tMax));
 			}
-			else if(t_star < t_axis_min && t_star < t_axis_max) {
-				kdtree_stack.push(StackTreeNode<Geometry*>(right, t_min, t_max));
+			else if(tSplit < t_axis_min && tSplit < t_axis_max) {
+				kdtreeStack.push(KdNodeWrapper<Obj>(right, tMin, tMax));
 			}
 			else {
 				double rmax, rmin;
-				if(tmp_node.cur_node->right->bounds.intersect(r, rmin, rmax)) {
-					kdtree_stac.push(StackTreeNode<Geometry*>(right, rmin, rmax));
+				if(tmp_node.node->right->bbox.intersect(r, rmin, rmax)) {
+					kdtreeStack.push(KdNodeWrapper<Obj>(right, rmin, rmax));
 				}
 				double lmax, lmin;
-				if(tmp_node.cur_node->left->bounds.intersect(r, lmin, lmax)) {
-					kdtree_stack.push(StackTreenode<Geometry*>(left, lmin, lmax));
+				if(tmp_node.node->left->bbox.intersect(r, lmin, lmax)) {
+					kdtreeStack.push(KdNodeWrapper<Obj>(left, lmin, lmax));
 				}
 			}
 
