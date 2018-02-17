@@ -63,6 +63,8 @@ public:
 	double findSplittingT(int depth, vector<Obj>& objects);
 
 	KdNode<Obj>* buildKdTreeHelper(vector<Obj> &objects, const BoundingBox& bounds, int depth, int size);
+
+	bool intersect(ray&, isect&, double& tMin, double& tMax) const;
 };
 
 
@@ -76,7 +78,7 @@ void constructFromScene(vector<Obj> objects, BoundingBox sceneBounds, int depth,
 
 void setDepth(int depth) {this-> depth = depth;}
 
-bool intersect(ray& r, isect&i, double tMin, double tMax) const;
+bool intersect(ray& r, isect&i, double& tMin, double& tMax) const;
 
 public:
    KdNode<Obj>* root;
@@ -321,7 +323,7 @@ public:
 	 * our code here
 	 */
 	void buildKdTree(int depth, int size);
-	bool intersectKdTree(ray& r, isect& i, double tMin, double tMax) const;
+	bool intersectKdTree(ray& r, isect& i, double& tMin, double& tMax) const;
 
 	// For efficiency reasons, we'll store texture maps in a cache
 	// in the Scene.  This makes sure they get deleted when the scene

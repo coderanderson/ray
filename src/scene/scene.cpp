@@ -119,16 +119,16 @@ void Scene::add(Light* light)
 // Get any intersection with an object.  Return information about the 
 // intersection through the reference parameter.
 bool Scene::intersect(ray& r, isect& i) const {
-	// double tMin = 0.0, tMax = 0.0;
-	// bool haveOne = this->intersectKdTree(r, i, tMin, tMax);
-	// if(!haveOne)
-	// 	i.setT(1000.0);
-	// // if debugging,
-	// if (TraceUI::m_debug)
-	// 	intersectCache.push_back(std::make_pair(new ray(r), new isect(i)));
-	// return haveOne;
-
-
+	if(kdtree != nullptr) {	// using kdtree
+		double tMin = 0.0, tMax = 0.0;
+		bool haveOne = this->intersectKdTree(r, i, tMin, tMax);
+		if(!haveOne)
+			i.setT(1000.0);
+		// if debugging,
+		if (TraceUI::m_debug)
+			intersectCache.push_back(std::make_pair(new ray(r), new isect(i)));
+		return haveOne;
+	}
 
 	double tmin = 0.0;
 	double tmax = 0.0;
@@ -163,6 +163,7 @@ TextureMap* Scene::getTexture(string name) {
 // move this method to scene.h
 void Scene::buildKdTree(int depth, int size) {
 	// this->kdtree = new KdTree<unique_ptr<Geometry>>();
+	if(this->kdtree) delete(this->kdtree);
 	this->kdtree = new KdTree<Geometry*>();
 	vector<Geometry*> kdObjects;
 	for(int i = 0; i < this->objects.size(); i++) {
@@ -171,9 +172,12 @@ void Scene::buildKdTree(int depth, int size) {
 	this->kdtree->constructFromScene(kdObjects, this->sceneBounds, depth, size);
 }
 
-bool Scene::intersectKdTree(ray& r, isect& i, double tMin, double tMax) const {
+bool Scene::intersectKdTree(ray& r, isect& i, double& tMin, double& tMax) const {
 	return this->kdtree->intersect(r, i, tMin, tMax);
 }
+
+
+
 
 template<typename Obj>
 void KdTree<Obj>::constructFromScene(vector<Obj> objects, BoundingBox sceneBounds, int depth, int size) {
@@ -210,6 +214,7 @@ KdNode<Obj>* KdNode<Obj>::buildKdTreeHelper(vector<Obj>& objects, const Bounding
 		return node;
 	}
 
+	cout << "start finding next split: " << endl;
 	node->tSplit = this->findSplittingT(depth, objects);
 	cout << "find tsplit: " << node->tSplit << endl;
 	
@@ -291,54 +296,83 @@ double KdNode<Obj>::findSplittingT(int depth, vector<Obj>& objects) {
 
 
 
+template<typename Obj>
+bool KdTree<Obj>::intersect(ray& r, isect& i, double& tMin, double& tMax) const {
+	return this->root->intersect(r, i, tMin, tMax);
+}
+
 
 
 template<typename Obj>
-bool KdTree<Obj>::intersect(ray& r, isect& i, double tMin, double tMax) const {
-	stack<KdNodeWrapper<Obj>> kdtreeStack;
-	KdNodeWrapper<Obj> rootEle(this->root, tMin, tMax);
-	kdtreeStack.push(rootEle);
-	bool have_one = false;
-	while(!kdtreeStack.empty()) {
-		KdNodeWrapper<Obj> tmp_node = kdtreeStack.top();
-		kdtreeStack.pop();
-		if((tmp_node.node->left == nullptr) && (tmp_node.node->right == nullptr)) {
-			for(int idx = 0; idx < tmp_node.node->objects.size(); ++idx) {
-				isect cur;
-				if(tmp_node.node->objects[idx] -> intersect(r, cur)) {
-					if(!have_one || cur.getT() < i.getT()) {
-						i = cur;
-						have_one = true;
-					}
-				}
-			}
-		}
-		else {
-			double t_axis_max = r.at(tMax)[tmp_node.node->axis];
-			double t_axis_min = r.at(tMin)[tmp_node.node->axis];
-			KdNode<Obj> *left = tmp_node.node->left;
-			KdNode<Obj> *right = tmp_node.node->right;
-			double tSplit = tmp_node.node->tSplit;
-			if(tSplit > t_axis_max && tSplit > t_axis_min) {
-				kdtreeStack.push(KdNodeWrapper<Obj>(left, tMin, tMax));
-			}
-			else if(tSplit < t_axis_min && tSplit < t_axis_max) {
-				kdtreeStack.push(KdNodeWrapper<Obj>(right, tMin, tMax));
-			}
-			else {
-				double rmax, rmin;
-				if(tmp_node.node->right->bbox.intersect(r, rmin, rmax)) {
-					kdtreeStack.push(KdNodeWrapper<Obj>(right, rmin, rmax));
-				}
-				double lmax, lmin;
-				if(tmp_node.node->left->bbox.intersect(r, lmin, lmax)) {
-					kdtreeStack.push(KdNodeWrapper<Obj>(left, lmin, lmax));
-				}
-			}
+bool KdNode<Obj>::intersect(ray& r, isect& i, double& tMin, double& tMax) const {
 
-		}
+	if(this == nullptr || !this->bbox.intersect(r, tMin, tMax)) {	// not intersecting with large bounding box
+		return false;
 	}
-	return have_one;
+	
+	if(this->left == nullptr && this->right == nullptr) {	// find intersecting objects in leaf node
+		bool hasOne = false;
+		isect tmpIsect;
+		for(int objIdx =0; objIdx < this->objects.size(); objIdx++) {
+			if(this->objects[objIdx]->intersect(r, tmpIsect)) {
+				if(!hasOne || tmpIsect.getT() < tmpIsect.getT()) {
+					i = tmpIsect;
+					hasOne = true;
+				}
+			}
+		}
+		return hasOne;
+	}
+
+	return this->left->intersect(r, i, tMin, tMax) || this->right->intersect(r, i, tMin, tMax);
+
+
+
+
+	// stack<KdNodeWrapper<Obj>> kdtreeStack;
+	// KdNodeWrapper<Obj> rootEle(this->root, tMin, tMax);
+	// kdtreeStack.push(rootEle);
+	// bool have_one = false;
+	// while(!kdtreeStack.empty()) {
+	// 	KdNodeWrapper<Obj> tmp_node = kdtreeStack.top();
+	// 	kdtreeStack.pop();
+	// 	if((tmp_node.node->left == nullptr) && (tmp_node.node->right == nullptr)) {
+	// 		for(int idx = 0; idx < tmp_node.node->objects.size(); ++idx) {
+	// 			isect cur;
+	// 			if(tmp_node.node->objects[idx] -> intersect(r, cur)) {
+	// 				if(!have_one || cur.getT() < i.getT()) {
+	// 					i = cur;
+	// 					have_one = true;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	else {
+	// 		double t_axis_max = r.at(tMax)[tmp_node.node->axis];
+	// 		double t_axis_min = r.at(tMin)[tmp_node.node->axis];
+	// 		KdNode<Obj> *left = tmp_node.node->left;
+	// 		KdNode<Obj> *right = tmp_node.node->right;
+	// 		double tSplit = tmp_node.node->tSplit;
+	// 		if(tSplit > t_axis_max && tSplit > t_axis_min) {
+	// 			kdtreeStack.push(KdNodeWrapper<Obj>(left, tMin, tMax));
+	// 		}
+	// 		else if(tSplit < t_axis_min && tSplit < t_axis_max) {
+	// 			kdtreeStack.push(KdNodeWrapper<Obj>(right, tMin, tMax));
+	// 		}
+	// 		else {
+	// 			double rmax, rmin;
+	// 			if(tmp_node.node->right->bbox.intersect(r, rmin, rmax)) {
+	// 				kdtreeStack.push(KdNodeWrapper<Obj>(right, rmin, rmax));
+	// 			}
+	// 			double lmax, lmin;
+	// 			if(tmp_node.node->left->bbox.intersect(r, lmin, lmax)) {
+	// 				kdtreeStack.push(KdNodeWrapper<Obj>(left, lmin, lmax));
+	// 			}
+	// 		}
+
+	// 	}
+	// }
+	// return have_one;
 
 }
 
