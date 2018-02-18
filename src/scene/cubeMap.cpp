@@ -4,6 +4,19 @@
 #include "../scene/material.h"
 extern TraceUI* traceUI;
 
+
+/* algorithm from wiki */
+
+
+
+
+
+
+
+
+
+
+
 glm::dvec3 CubeMap::getColor(ray r) const
 {
 	// YOUR CODE HERE
@@ -13,7 +26,7 @@ glm::dvec3 CubeMap::getColor(ray r) const
 	double u,v;
 	glm::dvec3 dir = r.getDirection();
 	
-	if (fabs(dir[0]) > fabs(dir[1]))
+	if (fabs(dir[0]) > fabs(dir[1])) {
 		if (fabs(dir[0]) > fabs(dir[2])) {
 			axis = 0;
 			bottom = 3;
@@ -44,7 +57,8 @@ glm::dvec3 CubeMap::getColor(ray r) const
 				right = 0;
 			}
 		}
-	else
+	}
+	else {
 		if (fabs(dir[1]) > fabs(dir[2])) {
 			axis = 1;
 			left = 1;
@@ -75,6 +89,7 @@ glm::dvec3 CubeMap::getColor(ray r) const
 				right = 0;
 			}
 		}
+	}
 
 	if (axis == 0) {
 		u = dir[2]/dir[0];
@@ -124,7 +139,7 @@ glm::dvec3 CubeMap::getColor(ray r) const
 			int theMap = front;
 			if (yindex < 0) {
 				theMap = bottom;
-				if (axis == 0)
+				if (axis == 0) {
 					if (dir[0] > 0) {
 						yindex = height - 1 - xindex;
 						xindex = width + jj;
@@ -133,22 +148,25 @@ glm::dvec3 CubeMap::getColor(ray r) const
 						yindex = xindex;
 						xindex = -1 - jj;
 					}
-				else if (axis == 1)
+				}
+				else if (axis == 1) {
 					if (dir[1] > 0) yindex = height + jj;
 					else {
 						yindex = -1 - jj;
 						xindex = width - 1 - xindex;
 					}
-				else if (axis == 2)
+				}
+				else if (axis == 2) {
 					if (dir[2] > 0) {
 						yindex = -1 - jj;
 						xindex = width - 1 - xindex;
 					}
 					else yindex = height + jj;
+				}
 			}
 			else if (yindex >= height) {
 				theMap = top;
-				if (axis == 0)
+				if (axis == 0) {
 					if (dir[0] > 0) {
 						yindex = xindex;
 						xindex = width - jj;
@@ -157,23 +175,26 @@ glm::dvec3 CubeMap::getColor(ray r) const
 						yindex = height - 1 - xindex;
 						xindex = jj - 1;
 					}
-				else if (axis == 1)
+				}
+				else if (axis == 1) {
 					if (dir[1] > 0)  {
 						yindex = height - jj;
 						xindex = width - 1 - xindex;
 					}
 					else yindex = jj - 1;
-				else if (axis == 2)
+				}
+				else if (axis == 2) {
 					if (dir[2] > 0) {
 						yindex =  height - jj;
 						xindex = width - 1 - xindex;
 					}
 					else yindex = jj - 1;
+				}
 			}
 			else if (xindex < 0) {
 				theMap = left;
 				if (axis == 0  || axis == 2) xindex = width + ii;
-				else if (axis == 1)
+				else if (axis == 1) {
 					if (dir[1] > 0)  {
 						xindex = width - 1 - yindex;
 						yindex = height + ii;
@@ -182,11 +203,12 @@ glm::dvec3 CubeMap::getColor(ray r) const
 						xindex = yindex;
 						yindex = -1 - ii;
 					}
+				}
 			}
 			else if (xindex >= width) {
 				theMap = right;
 				if (axis == 0  || axis == 2) xindex = ii - 1;
-				else if (axis == 1)
+				else if (axis == 1) {
 					if (dir[1] > 0)  {
 						xindex = yindex;
 						yindex = height - ii;
@@ -195,6 +217,7 @@ glm::dvec3 CubeMap::getColor(ray r) const
 						xindex = width - 1 - yindex;
 						yindex = ii - 1;
 					}
+				}
 			}
 			double du = u - nextu;
 			double dv = v - nextv;

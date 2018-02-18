@@ -219,6 +219,20 @@ glm::dvec3 RayTracer::traceRay(ray& r, const glm::dvec3& thresh, int depth, doub
 		//       and enabled.
 
 		colorC = glm::dvec3(0.0, 0.0, 0.0);
+		if(!traceUI->cubeMap()) {
+			//cout << "don't have cubmap" << endl;
+		}
+		else {
+			CubeMap* cm = traceUI->getCubeMap();
+			colorC = cm->getColor(r);
+			//cout << "using cubemap" << endl;
+		}
+
+
+
+
+
+
 	}
 #if VERBOSE
 	std::cerr << "== depth: " << depth+1 << " done, returning: " << colorC << std::endl;
