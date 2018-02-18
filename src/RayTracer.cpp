@@ -290,12 +290,8 @@ bool RayTracer::loadScene(const char* fn)
 
 	// To initialize kdtree
 	if(traceUI->kdSwitch()) {
-		int kdTreeDepth = traceUI->getMaxDepth();
-		int leafSize = traceUI->getLeafSize();
-		scene->buildKdTree(kdTreeDepth, leafSize);
+		scene->buildKdTree();
 	}
-	
-
 	return true;
 }
 

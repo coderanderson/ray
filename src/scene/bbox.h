@@ -17,6 +17,9 @@ public:
 
 	glm::dvec3 getMin() const { return bmin; }
 	glm::dvec3 getMax() const { return bmax; }
+
+	glm::dvec3 getCenter() const {return (bmin + bmax) * 0.5;}
+
 	bool isEmpty() { return bEmpty; }
 	void setEmpty() { bEmpty = true; }
 

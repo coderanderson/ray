@@ -34,75 +34,8 @@ using std::vector;
 class Light;
 class Scene;
 
-// template <typename Obj>
-// class KdTree;
-
-
-
-
-
-
-/*---------------------------------------------------------------------*/
-template<typename Obj>
-class KdNode {
-public:
-	KdNode(BoundingBox _bbox, int _axis, int _leafSize):
-		bbox(_bbox), axis(_axis), leafSize(_leafSize), left(nullptr), right(nullptr) {}
-
-	BoundingBox bbox;
-	KdNode<Obj>* left, *right;
-
-	vector<Obj> objects;
-	double tSplit;
-	int axis;
-	int leafSize;
-
-public:
-	void setLeafSize(int size) {this->leafSize = size;} 
-
-	double findSplittingT(int depth, vector<Obj>& objects);
-
-	KdNode<Obj>* buildKdTreeHelper(vector<Obj> &objects, const BoundingBox& bounds, int depth, int size);
-
-	bool intersect(ray&, isect&, double& tMin, double& tMax) const;
-};
-
-
-
-
-
 template <typename Obj>
-class KdTree {
-public:	
-void constructFromScene(vector<Obj> objects, BoundingBox sceneBounds, int depth, int size);
-
-void setDepth(int depth) {this-> depth = depth;}
-
-bool intersect(ray& r, isect&i, double& tMin, double& tMax) const;
-
-public:
-   KdNode<Obj>* root;
-   vector<Obj> objects;
-   int depth;
-};
-
-
-
-template <typename Obj>
-class KdNodeWrapper {
-public:
-	KdNodeWrapper(KdNode<Obj>* _node, int _tMax, int _tMin): node(_node), tMax(_tMax), tMin(_tMin) {}
-	KdNodeWrapper(): node(nullptr), tMax(0), tMin(0) {}
-public:
-	KdNode<Obj>* node;
-	double tMax, tMin;
-
-
-};
-/*---------------------------------------------------*/
-
-
-
+class KdTree;
 
 
 
@@ -322,8 +255,7 @@ public:
 	/**
 	 * our code here
 	 */
-	void buildKdTree(int depth, int size);
-	bool intersectKdTree(ray& r, isect& i, double& tMin, double& tMax) const;
+	void buildKdTree();
 
 	// For efficiency reasons, we'll store texture maps in a cache
 	// in the Scene.  This makes sure they get deleted when the scene
