@@ -50,9 +50,6 @@ void KdTree<Obj>::buildKdTreeHelper(vector<Obj>& objects, int depth) {
 	cout << "depth: " << depth << " " << objects.size() << " objects remaining " << endl;
 	if(objects.size() == 0) return; // stop growing 
 
-	for(int i = 0; i < objects.size(); i++) {
-		objects[i]->ComputeBoundingBox();
-	}
 	this->bbox = objects[0]->getBoundingBox();
 	for(auto object : objects) {
 		this->bbox.merge(object->getBoundingBox());
@@ -79,7 +76,7 @@ void KdTree<Obj>::buildKdTreeHelper(vector<Obj>& objects, int depth) {
 		splitPoint += (objBounds.getCenter()[splitDim]) / (1.0 * objects.size());
 	}
 
-	cout << "split point: " << splitPoint << endl;
+	// cout << "split point: " << splitPoint << endl;
 
 	vector<Obj> leftObjects, rightObjects;
 	for(int i = 0; i < objects.size(); i++) {
