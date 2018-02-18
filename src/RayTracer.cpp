@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <omp.h>
 
 
 using namespace std;
@@ -362,15 +363,30 @@ void RayTracer::traceImage(int w, int h)
 	//       An asynchronous traceImage lets the GUI update your results
 	//       while rendering.
 
-	for(int i = 0; i < w; i++) {
-		for(int j = 0; j < h; j++) {
-			// Task* task = new Task();
-			// task->func = [this, i, j]{this->tracePixel(i, j);};
-			// this->threadPool->addTask(task);
-			this->tracePixel(i, j);
-		}
-	}
+	int threadNum = traceUI->getThreads();
 
+	if(threadNum > 1) {
+		omp_set_num_threads(threadNum);
+	#pragma omp parallel for
+		for(int i = 0; i < w; i++) {
+			for(int j = 0; j < h; j++) {
+				this->tracePixel(i, j);
+			}
+		}
+		
+	}
+	else {
+		for(int i = 0; i < w; i++) {
+			for(int j = 0; j < h; j++) {
+				// Task* task = new Task();
+				// task->func = [this, i, j]{this->tracePixel(i, j);};
+				// this->threadPool->addTask(task);
+				this->tracePixel(i, j);
+			}
+		}
+
+
+	}
 	
 }
 
