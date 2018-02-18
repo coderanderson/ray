@@ -50,6 +50,11 @@ public:
 	void addNormal(const glm::dvec3 &);
 	bool addFace(int a, int b, int c);
 
+
+	// added by weihao
+	std::vector<TrimeshFace*> getFaces() const {return faces;}
+	bool isTrimesh() const {return true;}
+
 	const char *doubleCheck();
 
 	void generateNormals();

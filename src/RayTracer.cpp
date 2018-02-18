@@ -288,6 +288,10 @@ bool RayTracer::loadScene(const char* fn)
 	if (!sceneLoaded())
 		return false;
 
+	// To initialize kdtree
+	if(traceUI->kdSwitch()) {
+		scene->buildKdTree();
+	}
 	return true;
 }
 

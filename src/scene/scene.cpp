@@ -1,14 +1,26 @@
 #include <cmath>
+#include <iostream>
 
 #include "scene.h"
 #include "light.h"
 #include "kdTree.h"
-#include "../ui/TraceUI.h"
+// #include "../ui/TraceUI.h"
 #include <glm/gtx/extended_min_max.hpp>
 #include <iostream>
 #include <glm/gtx/io.hpp>
+#include <stack>
+
+#include "../SceneObjects/trimesh.h"
+
+extern TraceUI* traceUI;
 
 using namespace std;
+using std::unique_ptr;
+using std::stack;
+using std::vector;
+
+
+
 
 bool Geometry::intersect(ray& r, isect& i) const {
 	double tmin, tmax;
@@ -109,9 +121,49 @@ void Scene::add(Light* light)
 }
 
 
+
+void Scene::buildKdTree() {
+	cout << "building KdTree" << endl;
+	kdtree = new KdTree<Geometry*>();
+	vector<Geometry*> sceneObjects;
+	for(int i = 0; i < objects.size(); i++) {
+		if(objects[i]->isTrimesh()) {
+			for (int j = 0; j < ((Trimesh *)objects[i].get())->getFaces().size(); j++) {
+				sceneObjects.push_back(((Trimesh *)objects[i].get())->getFaces()[j]);
+			}
+		}
+		else {
+			sceneObjects.push_back(objects[i].get());
+		}
+		
+	}
+	// cout << "kdtree::buildKdTree" << endl;
+	kdtree->buildKdTree(sceneObjects);
+	// cout << "build kdtree done" << endl;
+	cout << "KdTree built" << endl;
+}
+
+
+
+
 // Get any intersection with an object.  Return information about the 
 // intersection through the reference parameter.
 bool Scene::intersect(ray& r, isect& i) const {
+	// cout << "start scene::intersect" << endl;
+	if(traceUI->kdSwitch()) {
+		// cout << "start kdtree intersect" << endl;
+		bool haveOne = kdtree->intersect(r, i);
+		// cout << "done kdtree intersect" << endl;
+		if(!haveOne) {
+			i.setT(1000.0);
+		}
+		// if debugging,
+		if (TraceUI::m_debug) {
+			intersectCache.push_back(std::make_pair(new ray(r), new isect(i)));
+		}
+		return haveOne;
+	}
+	
 	double tmin = 0.0;
 	double tmax = 0.0;
 	bool have_one = false;
@@ -140,5 +192,7 @@ TextureMap* Scene::getTexture(string name) {
 	}
 	return itr->second.get();
 }
+
+
 
 

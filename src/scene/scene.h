@@ -19,6 +19,8 @@
 #include "camera.h"
 #include "material.h"
 #include "ray.h"
+#include "kdTree.h"
+
 
 #include <glm/geometric.hpp>
 #include <glm/mat3x3.hpp>
@@ -28,12 +30,15 @@
 #include <glm/vec4.hpp>
 
 using std::unique_ptr;
+using std::vector;
 
 class Light;
 class Scene;
 
 template <typename Obj>
 class KdTree;
+
+
 
 class SceneElement {
 public:
@@ -176,6 +181,8 @@ public:
 	{
 	}
 
+	virtual bool isTrimesh() const {return false;}
+
 protected:
 	BoundingBox bounds;
 	TransformNode* transform;
@@ -242,6 +249,12 @@ public:
 	const Camera& getCamera() const { return camera; }
 	Camera& getCamera() { return camera; }
 
+
+	/**
+	 * our code here
+	 */
+	void buildKdTree();
+
 	// For efficiency reasons, we'll store texture maps in a cache
 	// in the Scene.  This makes sure they get deleted when the scene
 	// is destroyed.
@@ -283,11 +296,26 @@ private:
 	// are exempt from this requirement.
 	BoundingBox sceneBounds;
 
-	KdTree<Geometry>* kdtree;
+	KdTree<Geometry*>* kdtree;
 
 public:
 	// This is used for debugging purposes only.
 	mutable std::vector<std::pair<ray*, isect*>> intersectCache;
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endif // __SCENE_H__
