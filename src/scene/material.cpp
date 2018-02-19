@@ -102,10 +102,12 @@ glm::dvec3 TextureMap::getMappedValue(const glm::dvec2& coord) const
 	double xReal = coord[0] * width, yReal = coord[1] * height;
 	int x0 = int(xReal), y0 = int(yReal);
 	double dx = xReal - x0, dy = yReal - y0, omdx = 1 - dx, omdy = 1 - dy;
+	// cout << "texture mapping x0 = " << x0 << "y0 = " << y0 << "dx = " << dx << " dy = " << dy << endl;
 	glm::dvec3 bilinear = omdx * omdy * getPixelAt(x0, y0) +
 						omdx * dy * getPixelAt(x0, y0+1) +
 						dx * omdy * getPixelAt(x0+1, y0) +
 						dx * dy * getPixelAt(x0+1, y0+1);
+	// cout << "texture mapping result: " << bilinear << endl;
 	return bilinear;
 	// return glm::dvec3(1, 1, 1);
 	
@@ -118,7 +120,11 @@ glm::dvec3 TextureMap::getPixelAt(int x, int y) const
 	// In order to add texture mapping support to the
 	// raytracer, you need to implement this function.
 
-	if(data.empty()) return glm::dvec3(1, 1, 1);
+	if(data.empty()) {
+		//cout << "don't have a texture map here" << endl;
+		return glm::dvec3(1, 1, 1);
+	}
+	// cout << "texture map size: " << "width = " << width << "height = " << height << endl;
 	x = std::min(x, width - 1);
 	y = std::min(y, height - 1);
 
